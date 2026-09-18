@@ -5,7 +5,7 @@
  * folders they granted, runs each harness's browser adapter over them on a timer, and hands
  * the merged thread list to the game exactly as `/api/threads` would have. When the list
  * changes it also posts a small snapshot to the server — titles, previews, status, never a
- * transcript — so the same planet can be looked at from a phone.
+ * transcript — so the same world can be looked at from a phone.
  *
  * One folder per harness, because the browser will not hand over the home directory itself:
  * `~/.claude`, `~/.codex` and `~/.cursor` are three separate picks. Cursor scans last so the
@@ -161,7 +161,7 @@ export class LocalScanner {
     this._status()
     await this.scan()
     // Removing the last folder is a request to stop showing those sessions anywhere, so the
-    // server's copy goes too; otherwise the planet would fall back to the snapshot it just
+    // server's copy goes too; otherwise the world would fall back to the snapshot it just
     // stopped reading, on this computer and on every other one.
     if (!this.folders.size && this.publish) {
       this.lastSignature = ''
@@ -226,7 +226,7 @@ export class LocalScanner {
     try {
       await this.publish(this._snapshot(this.threads))
     } catch {
-      // The planet still renders from the live scan; the snapshot is only for other devices.
+      // The world still renders from the live scan; the snapshot is only for other devices.
       this.lastSignature = ''
     }
   }

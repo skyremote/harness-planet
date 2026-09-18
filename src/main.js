@@ -24,6 +24,7 @@ import {
   startCheckout,
 } from './game/api.js'
 import { hideProject, hiddenCatalog, unhideProject } from './game/hidden-projects.js'
+import { previewSeen, previewThreads } from './game/preview.js'
 import { LocalScanner } from './scan/index.js'
 import { CrewPanel } from './ui/crew.js'
 
@@ -43,7 +44,7 @@ app.insertAdjacentHTML(
   'beforeend',
   `<div class="boot"><div class="inner">
      <h1>Bot Crossing</h1>
-     <p>${HOSTED ? 'Loading your planet…' : 'Scanning for agent threads…'}</p>
+     <p>${HOSTED ? 'Loading your world…' : 'Scanning for agent threads…'}</p>
      <div class="bar"><i></i></div>
    </div></div>`
 )
@@ -55,12 +56,23 @@ const engine = new Engine(settings).mount(app)
 const rig = new CameraRig(engine.camera, engine.canvas, settings)
 const colony = new Colony(engine.scene, settings, engine.camera, engine.renderer)
 
-let state = { archived: [], archivedAt: {}, opened: [], plots: {}, seen: {}, hiddenProjects: [], viewedAt: {} }
+/** A colony with nothing recorded about it yet: a first run, and the paper the preview writes on. */
+const emptyState = () => ({
+  archived: [],
+  archivedAt: {},
+  opened: [],
+  plots: {},
+  seen: {},
+  hiddenProjects: [],
+  viewedAt: {},
+})
+
+let state = emptyState()
 let threads = []
 /** Hosted only: the page's own scanner and the panel that manages what it reads. */
 let scanner = null
 let crew = null
-/** What the server answered last — on a hosted planet, its snapshot plus the workspace's own agents. */
+/** What the server answered last — on a hosted world, its snapshot plus the workspace's own agents. */
 let serverThreads = []
 /** Last legend built for the bottom bar, kept so the open zone's chip can light up between polls. */
 let legendProjects = []
@@ -153,6 +165,12 @@ const actions = {
    * its workspace — nothing here is resumed, and nothing is written to disk.
    */
   newConversation: async () => {
+    // None of the demo's repos is on any disk, and its harness deep link would send the browser
+    // at a folder that does not exist. Saying so beats the operating system saying nothing.
+    if (preview.active) {
+      hud.toast('Nothing to start a thread in — this is a demo colony, not your computer')
+      return
+    }
     const name = selectedProject
     const folder = name && pathForProject(name)
     if (!folder && !(HOSTED && harnessForProject(name) === 'emrabot')) {
@@ -688,6 +706,101 @@ function mergedThreads() {
   return scanner?.supported && !lapsed ? crew : serverThreads
 }
 
+/**
+ * The sky the demo shows itself in: Terra, in the morning, held still.
+ *
+ * The time is read off the time control's own list rather than typed in again, so "morning"
+ * here and "Morning" on the button cannot come to mean two different times of day. `autoTime`
+ * and `clockTime` go off with it, since either one would walk the sun off the light this was
+ * picked for while somebody is still looking at it.
+ */
+const PREVIEW_VIEW = {
+  planet: 'terra',
+  timeOfDay: TIMES.find((t) => t.id === 'morning').value,
+  autoTime: false,
+  clockTime: false,
+}
+
+/**
+ * The demo colony behind "Just look around", and the wall between it and the real one.
+ *
+ * Everything it touches is borrowed and handed back: the roster, the colony state the page
+ * would otherwise save, the two settings it insists on, and the camera. The state swap is the
+ * half that has to be right. `applyThreads` records every thread the colony has met and where
+ * it put every zone, and both of those go straight into the colony file — so a preview sharing
+ * the real state object would file six invented repos under somebody's own save the next time
+ * anything at all was archived. Swapping the object out means the demo does its bookkeeping on
+ * paper nobody keeps, and `queueSave` refuses to write at all while it is up.
+ *
+ * `leave` deliberately does not repaint: `rosterThreads` is its only caller and is already
+ * holding the list that belongs on screen next.
+ */
+const preview = {
+  active: false,
+  threads: [],
+  /** What was put down on the way in. Restored whole on the way out, in the order it is written. */
+  _held: null,
+
+  enter() {
+    if (this.active) return
+    this.active = true
+    this.threads = previewThreads()
+    this._held = { state, lastLayout, orbiting: rig.orbiting, restoreSettings: null }
+    state = emptyState()
+    // Mostly already outside. `seen` is what stops a whole roster walking down the ramp at
+    // once, and twenty of them queueing at the hatch is exactly the entrance it was written to
+    // prevent — the fiction is a machine that has been working all morning, not one that has
+    // this second landed. But a morning's work includes somebody sitting down to start
+    // something, so `previewSeen` holds the newest two back to do exactly that on arrival.
+    // `applyThreads` writes those two into `seen` on the pass that draws them, so the poll
+    // after this one finds them known and leaves them where they walked to.
+    state.seen = previewSeen(this.threads)
+    lastLayout = ''
+    colony.restoreLayout({})
+    this._held.restoreSettings = settings.borrow(PREVIEW_VIEW)
+    // A colony that is only there to be looked at should look at itself. The button's own
+    // pressed state comes along, or the one control that stops it reads as the one that starts it.
+    rig.setOrbit(true)
+    hud.setOrbit(true)
+    crew?.setPreview(true)
+    applyThreads(this.threads)
+    hud.hint('A demo colony — not your computer · set up your own crew from the chip, top left', 7000)
+  },
+
+  leave() {
+    if (!this.active) return
+    const held = this._held
+    this._held = null
+    this.active = false
+    this.threads = []
+    // The real bookkeeping goes back before the settings do. Restoring a setting fires
+    // `onChange`, which writes into `state` and queues a save — and with the preview already
+    // stood down that save is live again, so it has to find the page's own state there and not
+    // the scratch copy the demo spent the last ten minutes scribbling on.
+    state = held.state
+    lastLayout = held.lastLayout
+    colony.restoreLayout(state.plots)
+    held.restoreSettings()
+    rig.setOrbit(held.orbiting)
+    hud.setOrbit(held.orbiting)
+    crew?.setPreview(false)
+  },
+}
+
+/**
+ * The roster the colony should draw.
+ *
+ * The demo stands in only while there is nothing of the person's own to stand in for, and steps
+ * aside the moment there is. Granting a folder is the answer to the question the preview was
+ * asked, so it should not also need the preview dismissed — and a folder that turns out to hold
+ * no threads still counts, because an empty world somebody connected is theirs and telling.
+ */
+function rosterThreads() {
+  const real = HOSTED ? mergedThreads() : serverThreads
+  if (preview.active && (real.length || scanner?.active.length)) preview.leave()
+  return preview.active ? preview.threads : real
+}
+
 let polling = false
 async function poll() {
   if (polling) return
@@ -695,7 +808,7 @@ async function poll() {
   try {
     const res = await fetchThreads()
     serverThreads = res.threads || []
-    applyThreads(HOSTED ? mergedThreads() : serverThreads)
+    applyThreads(rosterThreads())
     hud.removeBoot()
   } catch (err) {
     hud.toast(err.message || 'Could not reach the thread scanner', 'err')
@@ -706,6 +819,10 @@ async function poll() {
 }
 
 function queueSave() {
+  // The demo colony is nobody's save. Its bookkeeping already lands on a throwaway state object,
+  // so this is the second of two locks rather than the only one — and it is the one that still
+  // holds if somebody who did not know what the swap was for ever undoes it.
+  if (preview.active) return
   clearTimeout(pendingSave)
   pendingSave = setTimeout(async () => {
     try {
@@ -750,7 +867,7 @@ async function boot() {
 
   if (HOSTED) {
     scanner = new LocalScanner({
-      onThreads: () => applyThreads(mergedThreads()),
+      onThreads: () => applyThreads(rosterThreads()),
       onStatus: (status) => crew?.setStatus(status),
       publish: putSnapshot,
     })
@@ -758,13 +875,14 @@ async function boot() {
       scanner,
       toast: (message, kind) => hud.toast(message, kind),
       checkout: startCheckout,
+      preview: () => preview.enter(),
     })
     await scanner.init()
     scanner.start(POLL_MS)
     window.addEventListener('focus', () => scanner.scan())
     // Back from checkout: the URL says how it went, and the plan is re-read either way.
     const params = new URLSearchParams(window.location.search)
-    if (params.has('upgraded')) hud.toast('Your crew has landed — look for them on the planet')
+    if (params.has('upgraded')) hud.toast('Your crew has landed — look for them on your world')
     if (params.get('upgrade') === 'failed') hud.toast('The payment did not go through', 'err')
     if (params.has('upgraded') || params.has('upgrade')) {
       window.history.replaceState(null, '', window.location.pathname)
@@ -782,7 +900,7 @@ async function boot() {
     if (!document.hidden) poll()
   })
 
-  // A hosted planet with nothing on it yet asks how it should be crewed, and that question
+  // A hosted world with nothing on it yet asks how it should be crewed, and that question
   // takes the place of the help card on a first visit — two dialogs at once is one too many.
   const needsCrew = HOSTED && !scanner.active.length && !threads.length
   if (needsCrew) crew.open()

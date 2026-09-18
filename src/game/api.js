@@ -19,7 +19,7 @@ async function req(url, options) {
   const res = await fetch(url, { credentials: 'same-origin', ...options })
   if (HOSTED && res.status === 401) {
     signInRedirect()
-    throw new Error('Sign in to see your planet')
+    throw new Error('Sign in to see your world')
   }
   const body = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(body.error || `${res.status} ${res.statusText}`)
@@ -85,7 +85,7 @@ export async function saveState(state) {
     })
     if (HOSTED && res.status === 401) {
       signInRedirect()
-      throw new Error('Sign in to see your planet')
+      throw new Error('Sign in to see your world')
     }
     const body = await res.json().catch(() => ({}))
 
@@ -129,7 +129,7 @@ export function openDeepLink(url) {
 export const newSession = (folder, harness) => post(`${API}/new-session`, { folder, harness })
 
 export const revealFolder = (folder) => {
-  if (HOSTED) return Promise.reject(new Error('Not available on a hosted planet — the folder is on your computer'))
+  if (HOSTED) return Promise.reject(new Error('Not available on a hosted world — the folder is on your computer'))
   return post(`${API}/reveal`, { folder })
 }
 
@@ -142,7 +142,7 @@ export const startCheckout = () => post('/api/billing/checkout', {})
 /** Hosted only: a fresh chat with the person's crew; resolves to where it lives. */
 export const newCrewSession = () => post(`${API}/crew/sessions`, {})
 
-/** Hosted only: what the in-page scanner saw, so the planet shows from another device too. */
+/** Hosted only: what the in-page scanner saw, so the world shows from another device too. */
 export const putSnapshot = async (snapshot) => {
   const res = await fetch(`${API}/snapshot`, {
     method: 'PUT',

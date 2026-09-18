@@ -1419,7 +1419,7 @@ kbd {
 }
 .bot-crossing-canvas { cursor: grab; }
 
-/* ── crew: how a hosted planet gets its astronauts ───────────────────────────────── */
+/* ── crew: how a hosted world gets its astronauts ────────────────────────────────── */
 /* The dialog follows the workspace's own modal treatment: a glass card with a large
    radius, a soft glow behind it, pill buttons in the Emra blue, one clear price. */
 
@@ -1472,6 +1472,18 @@ kbd {
 .crew-chip[data-kind='on']::before { background: var(--crew-ok); box-shadow: 0 0 8px var(--crew-ok); }
 .crew-chip[data-kind='warn']::before { background: var(--crew-warn); }
 .crew-chip:hover { border-color: var(--line-strong); }
+
+/* The demo colony's chip. Accented rather than status-coloured, because it is not reporting
+   the state of anything — it is saying this world is a stand-in and this is the way off it,
+   and that has to read as an offer rather than as one more quiet readout. */
+.crew-chip[data-kind='demo'] {
+  border-color: var(--crew-accent);
+  color: var(--crew-ink);
+  font-weight: 500;
+  box-shadow: var(--shadow), 0 0 0 3px rgba(126, 150, 232, 0.14);
+}
+.crew-chip[data-kind='demo']::before { background: var(--crew-accent); box-shadow: 0 0 8px var(--crew-accent); }
+.crew-chip[data-kind='demo']:hover { border-color: var(--crew-accent-strong); background: var(--panel-solid); }
 
 .crew-overlay {
   position: fixed;

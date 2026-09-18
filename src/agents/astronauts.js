@@ -469,7 +469,7 @@ export class Astronauts {
     const cap = Math.min(this.capacity, this.settings.get('maxAgents'))
     // Agents on their way back to the ship still hold a slot, so the roster has to leave room
     // for them. Without this the clamp above would quietly drop whoever sorted last, which is
-    // better than an empty planet but still not what the scan said.
+    // better than an empty world but still not what the scan said.
     const leaving = this.agents.reduce((n, a) => n + (a.state === 'leaving' ? 1 : 0), 0)
     const wanted = entries.slice(0, Math.max(1, cap - leaving))
     const seen = new Set()

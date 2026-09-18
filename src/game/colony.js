@@ -291,7 +291,7 @@ export class Colony {
       for (const [name, list] of byProject) {
         if (list.every((t) => statusFor(t, now) === 'sleeping')) dormant.add(name)
       }
-      // Never fold away everything: a colony that answers a poll with an empty planet reads as
+      // Never fold away everything: a colony that answers a poll with an empty world reads as
       // broken rather than tidy, and there is nothing on screen to tell you which it was.
       if (dormant.size === byProject.size) dormant.clear()
       for (const name of dormant) byProject.delete(name)

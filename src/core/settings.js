@@ -177,6 +177,8 @@ export class Settings {
     this.values = { ...DEFAULTS, ...load() }
     this.listeners = new Set()
     this._saveTimer = 0
+    /** Set while something has `borrow`ed the settings; nothing reaches storage until it lets go. */
+    this._held = false
   }
 
   get(key) {
@@ -230,12 +232,39 @@ export class Settings {
   _scheduleSave() {
     clearTimeout(this._saveTimer)
     this._saveTimer = setTimeout(() => {
+      // Tested here rather than on the way in, because a save scheduled a moment *before* the
+      // borrow would otherwise fire during it and write the borrowed values after all.
+      if (this._held) return
       try {
         localStorage.setItem(STORE_KEY, JSON.stringify(this.values))
       } catch {
         /* private mode, quota — the game just forgets between sessions */
       }
     }, 400)
+  }
+
+  /**
+   * Run on somebody else's settings for a while, and hand back the way home.
+   *
+   * The preview world insists on a planet and a time of day, to show the colony off in the
+   * light it looks best in. Those are the person's own knobs, and persisting them would mean
+   * somebody who glanced at a demo once and closed the tab comes back to a planet they never
+   * picked — so nothing is written to storage between the borrow and the return, and the
+   * returned function puts the old values back before storage is allowed to notice at all.
+   *
+   * Anything else changed meanwhile — a quality slider, in the panel that is still open — is
+   * left alone by the return and saved by it, because that change was the person's own.
+   */
+  borrow(values) {
+    const before = {}
+    for (const key of Object.keys(values)) before[key] = this.values[key]
+    this._held = true
+    this.applyAll(values)
+    return () => {
+      this.applyAll(before)
+      this._held = false
+      this._scheduleSave()
+    }
   }
 
   /**

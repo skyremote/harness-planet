@@ -1,5 +1,5 @@
 /**
- * How a hosted planet gets its crew.
+ * How a hosted world gets its crew.
  *
  * Two pieces of DOM, both optional like the rest of the HUD. A chip at the top of the screen
  * says which folders the page is reading and how fresh the scan is; the dialog behind it is
@@ -46,7 +46,7 @@ const ICON = {
 }
 
 const PERKS = [
-  'A crew that lives on your planet, not on your laptop',
+  'A crew that lives on your world, not on your laptop',
   'Keeps working while your computer is closed',
   'Chat from any device, no coding agent needed',
 ]
@@ -58,7 +58,7 @@ const TEMPLATE = `
     <button class="crew-close" type="button" aria-label="Close">${ICON.close}</button>
     <header class="crew-head">
       <div class="crew-eyebrow">Bot Crossing</div>
-      <h2 id="crew-title">How do you want to crew this planet?</h2>
+      <h2 id="crew-title">How do you want to crew this world?</h2>
       <p class="crew-sub">Every coding-agent thread becomes an astronaut. Nothing installs. Only titles and status ever leave your computer, never a transcript.</p>
     </header>
     <div class="crew-cards">
@@ -99,12 +99,16 @@ export class CrewPanel {
    *   scanner: LocalScanner,
    *   toast: (message: string, kind?: string) => void,
    *   checkout: () => Promise<{ url: string }>,
+   *   preview: () => void,
    * }} opts
    */
-  constructor(root, { scanner, toast, checkout }) {
+  constructor(root, { scanner, toast, checkout, preview }) {
     this.scanner = scanner
     this.toast = toast
     this.checkout = checkout
+    this.preview = preview
+    /** True while the demo colony is standing in for the person's own; the chip says so. */
+    this.previewing = false
     this.el = document.createElement('div')
     this.el.className = 'crew'
     this.el.innerHTML = TEMPLATE
@@ -122,7 +126,12 @@ export class CrewPanel {
   _wire() {
     this.$('.crew-chip').addEventListener('click', () => this.open())
     this.$('.crew-close').addEventListener('click', () => this.close())
-    this.$('.crew-skip').addEventListener('click', () => this.close())
+    // Looking around means being shown something. Closing onto the person's own empty world
+    // answers "what is this?" with nothing at all, so the demo colony takes the question.
+    this.$('.crew-skip').addEventListener('click', () => {
+      this.close()
+      this.preview?.()
+    })
     this.$('.crew-overlay').addEventListener('click', (e) => {
       if (e.target === this.$('.crew-overlay')) this.close()
     })
@@ -211,6 +220,18 @@ export class CrewPanel {
     this._renderPaid()
   }
 
+  /**
+   * Say whether the world on screen is the demo one.
+   *
+   * The chip is the only permanent thing on screen that answers "where is this coming from",
+   * so it is also the right place to answer "this is not your computer" — and it already opens
+   * this dialog on a click, which makes the way out of the demo the way out it already was.
+   */
+  setPreview(on) {
+    this.previewing = Boolean(on)
+    this._renderChip()
+  }
+
   isOpen() {
     return !this.$('.crew-overlay').hidden
   }
@@ -280,13 +301,13 @@ export class CrewPanel {
     if (b.active) {
       tag.hidden = false
       tag.textContent = 'Active'
-      fine.textContent = 'Every chat with your crew is an astronaut on this planet.'
+      fine.textContent = 'Every chat with your crew is an astronaut on this world'
       actions.innerHTML = `<button class="crew-btn primary" type="button" data-go="${esc(b.crewUrl || '/')}">${ICON.sparkle} Chat with your crew</button>`
       return
     }
     fine.textContent = 'Cancel any time. Secure checkout by Stripe.'
     if (b.checkout === 'off') {
-      actions.innerHTML = `<button class="crew-btn primary" type="button" disabled>Not available on this planet yet</button>`
+      actions.innerHTML = `<button class="crew-btn primary" type="button" disabled>Not available on this world yet</button>`
       return
     }
     actions.innerHTML = `<button class="crew-btn primary" type="button" data-pay="1">Get built-in agents</button>`
@@ -298,7 +319,10 @@ export class CrewPanel {
     const granted = folders.filter((f) => f.state === 'granted')
     let text
     let kind = 'off'
-    if (granted.length) {
+    if (this.previewing) {
+      text = 'Demo colony — not your computer · Set up your crew'
+      kind = 'demo'
+    } else if (granted.length) {
       const threads = granted.reduce((n, f) => n + f.threads, 0)
       text = `${granted.map((f) => f.folder).join(' + ')} · ${threads} thread${threads === 1 ? '' : 's'} · ${ago(lastScanAt)}`
       kind = folders.some((f) => f.error) ? 'warn' : 'on'
