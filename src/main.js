@@ -41,7 +41,7 @@ const app = document.getElementById('app')
 app.insertAdjacentHTML(
   'beforeend',
   `<div class="boot"><div class="inner">
-     <h1>Bot Crossing</h1>
+     <h1>Harness Planet</h1>
      <p>Scanning for agent threads…</p>
      <div class="bar"><i></i></div>
    </div></div>`
@@ -95,7 +95,7 @@ const actions = {
     const url = engine.canvas.toDataURL('image/png')
     const a = document.createElement('a')
     a.href = url
-    a.download = `bot-crossing-${colony.planet.id}-${stamp()}.png`
+    a.download = `harness-planet-${colony.planet.id}-${stamp()}.png`
     a.click()
     hud.toast('Screenshot saved')
   },

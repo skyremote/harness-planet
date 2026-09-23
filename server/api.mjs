@@ -213,6 +213,17 @@ export async function present(result, via = 'app') {
   // Only the reason reaches the page: a failure may still carry the adapter's command.
   if (!result || !result.ok) return { ok: false, error: result?.error || 'Nothing to open' }
 
+  // Harness Planet: a harness with no URL scheme (bb) opens through its own CLI, which talks to
+  // the running app and exits. No terminal window is wanted for that, whichever way the page
+  // asked. argv[0] is absolute and was found on PATH by the adapter.
+  if (Array.isArray(result.exec) && result.exec.length && path.isAbsolute(result.exec[0])) {
+    const [cmd, ...args] = result.exec
+    const child = spawn(cmd, args, { stdio: 'ignore', detached: true })
+    child.on('error', () => {})
+    child.unref()
+    return { ok: true }
+  }
+
   if (via === 'terminal') {
     if (!result.command) {
       return {
@@ -390,7 +401,7 @@ export async function apiMiddleware(req, res, next) {
   if (!url.pathname.startsWith('/api/')) return next ? next() : send(res, 404, { error: 'Not found' })
 
   if (!isLocalRequest(req)) {
-    return send(res, 403, { error: 'Bot Crossing only answers its own page on this machine' })
+    return send(res, 403, { error: 'Harness Planet only answers its own page on this machine' })
   }
 
   try {

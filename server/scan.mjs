@@ -74,6 +74,37 @@ export function disambiguateProjects(threads) {
 }
 
 /**
+ * Harness Planet: some harnesses wrap others. A bb thread is a Claude Code or Codex session
+ * underneath, so both adapters see it. The wrapping adapter names the thread it wraps in
+ * `supersedes`; the two become one bot, keyed on the wrapper, keeping the wrapped thread's
+ * transcript facts (size, model, branch, subagents) wherever the wrapper has nothing better.
+ */
+export function mergeSuperseded(threads) {
+  const claims = new Map()
+  for (const t of threads) for (const id of t.supersedes || []) claims.set(id, t)
+  if (!claims.size) return threads.map(({ supersedes, ...t }) => t)
+
+  const wrapped = new Map()
+  const out = []
+  for (const t of threads) {
+    if (claims.has(t.id)) wrapped.set(claims.get(t.id).id, t)
+    else out.push(t)
+  }
+  return out.map(({ supersedes, ...t }) => {
+    const base = wrapped.get(t.id)
+    if (!base) return t
+    const merged = { ...base }
+    for (const [k, v] of Object.entries(t)) {
+      if (v === '' || v === 0 || v == null || (Array.isArray(v) && !v.length)) continue
+      merged[k] = v
+    }
+    merged.running = Boolean(base.running || t.running)
+    merged.hasError = Boolean(base.hasError || t.hasError)
+    return merged
+  })
+}
+
+/**
  * Every thread from every detected harness.
  *
  * A harness that throws is skipped rather than allowed to take the scan down with it: one
@@ -87,12 +118,12 @@ export async function scanThreads() {
         const threads = await h.scanThreads()
         return threads.map((t) => ({ ...t, harness: h.id, harnessName: h.name }))
       } catch (err) {
-        console.warn(`bot-crossing: harness "${h.id}" failed to scan —`, err?.message || err)
+        console.warn(`harness-planet: harness "${h.id}" failed to scan —`, err?.message || err)
         return []
       }
     })
   )
-  const threads = disambiguateProjects(lists.flat())
+  const threads = disambiguateProjects(mergeSuperseded(lists.flat()))
   threads.sort((a, b) => b.lastActivityAt - a.lastActivityAt)
   return threads
 }
