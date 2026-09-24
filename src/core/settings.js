@@ -178,10 +178,12 @@ const DEFAULTS = {
   saturation: 1.0,
   vignette: 0.3,
 
-  // Sound. On by default but silent until the first click — browsers insist — and every
-  // layer has its own fader, because the one thing an always-open window must never do is
-  // make a noise you cannot turn down.
-  sound: true,
+  // Sound. Off by default (Harness Planet): it lives in an always-open bb panel, and that
+  // must never make a noise nobody asked for. M or the speaker button turns it on; every
+  // layer still has its own fader.
+  sound: false,
+  /** Set once when the sound default flipped off, so the migration never runs twice. */
+  soundDefaultOff: false,
   masterVolume: 0.6,
   ambienceVolume: 0.8,
   effectsVolume: 0.8,
@@ -236,6 +238,12 @@ export class Settings {
     if (!Object.hasOwn(stored, 'followDefaultOn')) {
       this.values.followSelected = true
       this.values.followDefaultOn = true
+    }
+    // Sound used to default on, so an existing install has `true` stored and would never see
+    // the new default. Muted once, remembered as done — turning it back on then sticks.
+    if (!Object.hasOwn(stored, 'soundDefaultOff')) {
+      this.values.sound = false
+      this.values.soundDefaultOff = true
     }
     this.listeners = new Set()
     this._saveTimer = 0

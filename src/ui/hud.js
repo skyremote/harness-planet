@@ -1119,7 +1119,7 @@ const TEMPLATE = `
   <button class="btn icon" id="btn-planet" title="Change planet (Tab)">${ICON.globe}</button>
   <button class="btn icon" id="btn-time" title="Change the time of day (L)">${ICON.sun}</button>
   <div class="sep"></div>
-  <button class="btn icon" id="btn-sound" title="Mute (M)" aria-pressed="true">${ICON.sound}</button>
+  <button class="btn icon" id="btn-sound" title="Unmute (M)" aria-pressed="false">${ICON.soundOff}</button>
 </div>
 
 <div class="settings panel closed" inert>
