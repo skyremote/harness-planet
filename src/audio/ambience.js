@@ -66,7 +66,7 @@ export class Ambience {
     this.ambienceBus = null
     this.effectsBus = null
 
-    this._enabled = this._flag('sound', true)
+    this._enabled = this._flag('sound', false)
     this._visible = typeof document === 'undefined' ? true : !document.hidden
     this._planet = null
     /** The current bed group, and the ones on their way out. */
@@ -360,7 +360,7 @@ export class Ambience {
   }
 
   _onSettings(changed) {
-    if (changed.has('sound')) this.setEnabled(this._flag('sound', true))
+    if (changed.has('sound')) this.setEnabled(this._flag('sound', false))
     if (changed.has('masterVolume') || changed.has('ambienceVolume') || changed.has('effectsVolume')) this._applyVolumes()
   }
 

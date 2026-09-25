@@ -1,4 +1,23 @@
-# Bot Crossing — your agent threads, as a colony
+# Harness Planet
+
+**A NavAIgate fork of [Bot Crossing](https://github.com/Station-Sciences/bot-crossing) by Jarren Rocks, used under the MIT licence.**
+
+Every coding-agent thread on this machine (Claude Code, Codex, Cursor, bb, and the other harnesses below) is a little bot on a planet. A bot that needs you holds a `?`; click it and the thread opens where it came from.
+
+What this fork adds:
+
+- **bb support** (`server/harnesses/bb.mjs`). bb runs Claude Code and Codex threads, so each bb thread already exists as a Claude Code or Codex session. The bb adapter reads `~/.bb/bb.db` read-only and *claims* that session instead of adding a second bot: one bot per thread, with bb's title and "needs you" state, and a click opens it in bb (`bb thread open`). The merge lives in `mergeSuperseded()` in `server/scan.mjs`.
+- **Harness Planet branding.** The name "Bot Crossing" and the crew character as a product identity are reserved by the original author (see [TRADEMARKS.md](TRADEMARKS.md)); this fork uses neither as its name or logo.
+
+Run it: `npm install && npm run dev`, then open the URL it prints (Node 22.13+).
+
+Upstream is tracked as the `upstream` git remote; `git fetch upstream && git merge upstream/main` pulls in new harnesses and fixes.
+
+---
+
+The original README follows.
+
+## Bot Crossing — your agent threads, as a colony
 
 **[botcrossing.com](https://botcrossing.com)**
 
